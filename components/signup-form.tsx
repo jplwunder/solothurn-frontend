@@ -1,24 +1,50 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
-  // FieldSeparator,
 } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
-import { IconLayoutRows } from "@tabler/icons-react";
+import {
+  IconEye,
+  IconEyeOff,
+  IconLayoutRows,
+  IconLoader2,
+} from "@tabler/icons-react";
 import { api } from "@/lib/api";
+
+const PASSWORD_RULES = [
+  { label: "8+ characters", test: (p: string) => p.length >= 8, msg: "At least 8 characters" },
+  { label: "Uppercase letter", test: (p: string) => /[A-Z]/.test(p), msg: "Must contain at least one uppercase letter" },
+  { label: "Lowercase letter", test: (p: string) => /[a-z]/.test(p), msg: "Must contain at least one lowercase letter" },
+  { label: "Number", test: (p: string) => /[0-9]/.test(p), msg: "Must contain at least one number" },
+  { label: "Special character", test: (p: string) => /[^A-Za-z0-9]/.test(p), msg: "Must contain at least one special character" },
+];
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const [errors, setErrors] = useState<{ password?: string[]; confirm?: string }>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const router = useRouter();
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,36 +54,29 @@ export function SignupForm({
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
     const confirm = (form.elements.namedItem("password_confirmation") as HTMLInputElement).value;
 
-    const passwordRules = [
-      { test: password.length >= 8,          msg: "At least 8 characters\n" },
-      { test: /[A-Z]/.test(password),        msg: "Must contain at least one uppercase letter\n" },
-      { test: /[a-z]/.test(password),        msg: "Must contain at least one lowercase letter\n" },
-      { test: /[0-9]/.test(password),        msg: "Must contain at least one number\n" },
-      { test: /[^A-Za-z0-9]/.test(password), msg: "Must contain at least one special character\n" },
-    ];
-    const failedRules = passwordRules.filter((r) => !r.test).map((r) => r.msg);
-
+    const failedRules = PASSWORD_RULES.filter((r) => !r.test(password)).map((r) => r.msg);
     const nextErrors: typeof errors = {};
-    if (failedRules.length > 0) {
-      nextErrors.password = failedRules;
-    }
-    if (password !== confirm) {
-      nextErrors.confirm = "Passwords do not match.";
-    }
+    if (failedRules.length > 0) nextErrors.password = failedRules;
+    if (password !== confirm) nextErrors.confirm = "Passwords do not match.";
     if (nextErrors.password || nextErrors.confirm) {
       setErrors(nextErrors);
       return;
     }
 
     setErrors({});
+    setSubmitError(null);
+    setLoading(true);
+
     try {
       await api.post("/api/v1/users/users", { email, name, password });
     } catch (error) {
-      setErrors({
-        password: ["An error occurred while creating your account."],
-      });
+      setSubmitError("An error occurred while creating your account.");
+      setLoading(false);
       return;
     }
+
+    setLoading(false);
+    router.push("/login");
   }
 
   return (
@@ -80,61 +99,111 @@ export function SignupForm({
             </FieldDescription>
           </div>
           <Field>
-            <Field>
-              <FieldLabel htmlFor="name">Name</FieldLabel>
-              <Input id="name" type="text" />
-            </Field>
+            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <Input
+              id="name"
+              name="name"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="Your name"
+            />
+          </Field>
+          <Field>
             <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input id="email" type="email" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
           </Field>
           <Field>
             <FieldLabel htmlFor="password">Password</FieldLabel>
-            <Input id="password" type="password" />
-            {errors.password ? (
-              <FieldDescription className="text-destructive">{errors.password}</FieldDescription>
-            ) : (
-              <FieldDescription>Must be at least 8 characters long.</FieldDescription>
+            <InputGroup>
+              <InputGroupInput
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="new-password"
+                value={passwordValue}
+                onChange={(e) => setPasswordValue(e.target.value)}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <IconEyeOff className="size-4" />
+                  ) : (
+                    <IconEye className="size-4" />
+                  )}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1 text-sm">
+              {PASSWORD_RULES.map((rule, i) => (
+                <li
+                  key={i}
+                  className={cn(
+                    "flex items-center gap-1.5",
+                    rule.test(passwordValue)
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <span className="font-bold">{rule.test(passwordValue) ? "✓" : "·"}</span>
+                  {rule.label}
+                </li>
+              ))}
+            </ul>
+            {errors.password && (
+              <FieldError errors={errors.password.map((msg) => ({ message: msg }))} />
             )}
           </Field>
           <Field>
             <FieldLabel htmlFor="password_confirmation">
               Confirm Password
             </FieldLabel>
-            <Input id="password_confirmation" type="password" />
-            {errors.confirm && (
-              <FieldDescription className="text-destructive">{errors.confirm}</FieldDescription>
-            )}
+            <InputGroup>
+              <InputGroupInput
+                id="password_confirmation"
+                name="password_confirmation"
+                type={showConfirm ? "text" : "password"}
+                required
+                autoComplete="new-password"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  onClick={() => setShowConfirm((prev) => !prev)}
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
+                >
+                  {showConfirm ? (
+                    <IconEyeOff className="size-4" />
+                  ) : (
+                    <IconEye className="size-4" />
+                  )}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            {errors.confirm && <FieldError>{errors.confirm}</FieldError>}
           </Field>
           <Field>
-            <Button type="submit">Create Account</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <IconLoader2 className="animate-spin" />
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+            {submitError && <FieldError>{submitError}</FieldError>}
           </Field>
-          {/* <FieldSeparator>Or</FieldSeparator>
-          <Field className="grid gap-4 sm:grid-cols-1">
-            <Button variant="outline" type="button">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path
-                  d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
-                  fill="currentColor"
-                />
-              </svg>
-              Continue with Apple
-            </Button>
-            <Button variant="outline" type="button">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path
-                  d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                  fill="currentColor"
-                />
-              </svg>
-              Continue with Google
-            </Button>
-          </Field> */}
         </FieldGroup>
       </form>
-      {/* <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
-      </FieldDescription> */}
     </div>
   );
 }
