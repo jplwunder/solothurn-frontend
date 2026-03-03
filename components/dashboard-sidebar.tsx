@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -35,12 +35,11 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   function handleLogout() {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_id");
-    router.push("/login");
+    window.location.href = "/login";
   }
 
   return (
