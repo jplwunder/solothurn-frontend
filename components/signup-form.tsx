@@ -111,7 +111,7 @@ export function SignupForm({
     setErrors({});
     setLoading(true);
     try {
-      await api.post("/api/v1/users/users", { email, name, password });
+      await api.post("/api/v1/auth/register", { email, name, password });
     } catch {
       setErrors({ general: "An error occurred while creating your account." });
       setLoading(false);
