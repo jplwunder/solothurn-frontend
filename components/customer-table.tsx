@@ -43,10 +43,7 @@ export function CustomerTable() {
       setLoading(true);
       setError(null);
       try {
-        const userId = localStorage.getItem("user_id");
-        const data = userId
-          ? await api.get<Customer[]>(`/api/v1/customers/user/${userId}`)
-          : await api.get<Customer[]>("/api/v1/customers");
+        const data = await api.get<Customer[]>(`/api/v1/customers/all`)
         setCustomers(data);
       } catch {
         setError("Failed to load customers. Please try again.");
