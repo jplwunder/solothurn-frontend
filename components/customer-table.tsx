@@ -35,7 +35,7 @@ function formatDate(iso: string): string {
 function TableRowSkeleton() {
   return (
     <tr>
-      {[1, 2, 3, 4, 5].map((i) => (
+      {[1, 2, 3, 4, 5, 6].map((i) => (
         <td key={i} className="px-4 py-3">
           <Skeleton className="h-4 w-full" />
         </td>
@@ -134,7 +134,7 @@ export function CustomerTable() {
       };
       const newCustomer = await api.post<Customer>(
         "/api/v1/customers",
-        payload
+        payload,
       );
       setCustomers((prev) => [newCustomer, ...prev]);
       setSheetOpen(false);
@@ -145,7 +145,14 @@ export function CustomerTable() {
     }
   }
 
-  const columns = ["Name", "Email", "Phone", "City / State", "Created"];
+  const columns = [
+    "Name",
+    "Email",
+    "Phone",
+    "Address",
+    "City / State",
+    "Created",
+  ];
 
   return (
     <>
@@ -186,7 +193,7 @@ export function CustomerTable() {
                 {!loading && error && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-12 text-center text-destructive"
                     >
                       {error}
@@ -196,7 +203,7 @@ export function CustomerTable() {
 
                 {!loading && !error && customers.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-16 text-center">
+                    <td colSpan={6} className="px-4 py-16 text-center">
                       <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <IconUsers className="size-10 opacity-40" />
                         <p className="font-medium">No customers yet</p>
@@ -225,6 +232,13 @@ export function CustomerTable() {
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {customer.phone ?? (
+                          <span className="italic text-muted-foreground/50">
+                            —
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {customer.address ?? (
                           <span className="italic text-muted-foreground/50">
                             —
                           </span>
@@ -365,9 +379,7 @@ export function CustomerTable() {
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting && (
-                  <IconLoader2 className="animate-spin" />
-                )}
+                {submitting && <IconLoader2 className="animate-spin" />}
                 {submitting ? "Saving…" : "Save Customer"}
               </Button>
             </SheetFooter>
