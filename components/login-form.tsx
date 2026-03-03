@@ -25,6 +25,7 @@ import {
   IconEyeOff,
 } from "@tabler/icons-react";
 import { api } from "@/lib/api";
+import type { AuthResponse } from "@/lib/types";
 
 export function LoginForm({
   className,
@@ -48,7 +49,19 @@ export function LoginForm({
       .value;
 
     try {
-      await api.post("/api/v1/auth/login", { email, password });
+      const response = await api.post<AuthResponse>("/api/v1/auth/login", {
+        email,
+        password,
+      });
+      localStorage.setItem("auth_token", response.access_token);
+      try {
+        const payload = JSON.parse(atob(response.access_token.split(".")[1]));
+        if (payload.sub != null && !isNaN(Number(payload.sub))) {
+          localStorage.setItem("user_id", String(payload.sub));
+        }
+      } catch {
+        // JWT decode failed — user_id stays unset, dashboard falls back to all customers
+      }
     } catch {
       setLoginError("Invalid email or password");
       setLoginLoading(false);
