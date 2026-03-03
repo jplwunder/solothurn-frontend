@@ -43,7 +43,7 @@ export function DashboardSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

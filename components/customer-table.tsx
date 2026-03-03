@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { Customer } from "@/lib/types";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { IconUsers } from "@tabler/icons-react";
@@ -43,7 +38,7 @@ export function CustomerTable() {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.get<Customer[]>(`/api/v1/customers/all`)
+        const data = await api.get<Customer[]>(`/api/v1/customers/all`);
         setCustomers(data);
       } catch {
         setError("Failed to load customers. Please try again.");
