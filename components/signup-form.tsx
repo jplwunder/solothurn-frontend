@@ -25,6 +25,7 @@ import {
   IconEyeOff,
 } from "@tabler/icons-react";
 import { api } from "@/lib/api";
+import type { Company } from "@/lib/types";
 
 const PASSWORD_RULES = [
   { test: (p: string) => p.length >= 8, label: "At least 8 characters" },
@@ -72,7 +73,10 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [companyName, setCompanyName] = useState("");
   const [errors, setErrors] = useState<{
+    companyName?: string;
     password?: string[];
     confirm?: string;
     general?: string;
@@ -82,6 +86,15 @@ export function SignupForm({
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  function handleNext() {
+    if (!companyName.trim()) {
+      setErrors({ companyName: "Company name is required." });
+      return;
+    }
+    setErrors({});
+    setStep(2);
+  }
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -111,7 +124,16 @@ export function SignupForm({
     setErrors({});
     setLoading(true);
     try {
-      await api.post("/api/v1/auth/register", { email, name, password });
+      const company = await api.postPublic<Company>(
+        "/api/v1/auth/register-company",
+        { name: companyName }
+      );
+      await api.postPublic("/api/v1/auth/register", {
+        email,
+        name,
+        password,
+        company_id: company.id,
+      });
     } catch {
       setErrors({ general: "An error occurred while creating your account." });
       setLoading(false);
@@ -134,112 +156,169 @@ export function SignupForm({
               <span className="sr-only">Acme Inc.</span>
             </a>
             <h1 className="text-xl font-bold">Create your account</h1>
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <span className={cn("font-medium", step === 1 && "text-foreground")}>
+                1. Company
+              </span>
+              <span>—</span>
+              <span className={cn("font-medium", step === 2 && "text-foreground")}>
+                2. Account
+              </span>
+            </div>
             <FieldDescription>
               Already have an account?{" "}
               <a href="/login">Sign in</a>
             </FieldDescription>
           </div>
 
-          <Field>
-            <FieldLabel htmlFor="name">Name</FieldLabel>
-            <Input
-              id="name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              required
-              placeholder="Your name"
-            />
-          </Field>
+          {step === 1 && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="company_name">Company Name</FieldLabel>
+                <Input
+                  id="company_name"
+                  name="company_name"
+                  type="text"
+                  required
+                  placeholder="Your company name"
+                  value={companyName}
+                  onChange={(e) => {
+                    setCompanyName(e.target.value);
+                    if (errors.companyName) setErrors({});
+                  }}
+                />
+                {errors.companyName && (
+                  <FieldError>{errors.companyName}</FieldError>
+                )}
+              </Field>
 
-          <Field>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="you@example.com"
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
+              <Field>
+                <Button
                   type="button"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword((v) => !v)}
+                  size="lg"
+                  className="w-full"
+                  onClick={handleNext}
                 >
-                  {showPassword ? <IconEyeOff /> : <IconEye />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-            <PasswordStrength password={password} />
-            {errors.password && (
-              <FieldError>
-                <ul className="ml-4 list-disc space-y-0.5">
-                  {errors.password.map((msg) => (
-                    <li key={msg}>{msg}</li>
-                  ))}
-                </ul>
-              </FieldError>
-            )}
-          </Field>
+                  Next
+                </Button>
+              </Field>
+            </>
+          )}
 
-          <Field>
-            <FieldLabel htmlFor="password_confirmation">
-              Confirm Password
-            </FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="password_confirmation"
-                name="password_confirmation"
-                type={showConfirm ? "text" : "password"}
-                autoComplete="new-password"
-                required
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  type="button"
-                  aria-label={showConfirm ? "Hide password" : "Show password"}
-                  onClick={() => setShowConfirm((v) => !v)}
-                >
-                  {showConfirm ? <IconEyeOff /> : <IconEye />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-            {errors.confirm && <FieldError>{errors.confirm}</FieldError>}
-          </Field>
+          {step === 2 && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="name">Name</FieldLabel>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  placeholder="Your name"
+                />
+              </Field>
 
-          <Field>
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? (
-                <IconLoader2 className="animate-spin" />
-              ) : (
-                "Create account"
-              )}
-            </Button>
-            {errors.general && (
-              <FieldError className="text-center">{errors.general}</FieldError>
-            )}
-          </Field>
+              <Field>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="you@example.com"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      type="button"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      {showPassword ? <IconEyeOff /> : <IconEye />}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                <PasswordStrength password={password} />
+                {errors.password && (
+                  <FieldError>
+                    <ul className="ml-4 list-disc space-y-0.5">
+                      {errors.password.map((msg) => (
+                        <li key={msg}>{msg}</li>
+                      ))}
+                    </ul>
+                  </FieldError>
+                )}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="password_confirmation">
+                  Confirm Password
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    id="password_confirmation"
+                    name="password_confirmation"
+                    type={showConfirm ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      type="button"
+                      aria-label={showConfirm ? "Hide password" : "Show password"}
+                      onClick={() => setShowConfirm((v) => !v)}
+                    >
+                      {showConfirm ? <IconEyeOff /> : <IconEye />}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                {errors.confirm && <FieldError>{errors.confirm}</FieldError>}
+              </Field>
+
+              <Field>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setStep(1)}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="flex-1"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <IconLoader2 className="animate-spin" />
+                    ) : (
+                      "Create account"
+                    )}
+                  </Button>
+                </div>
+                {errors.general && (
+                  <FieldError className="text-center">{errors.general}</FieldError>
+                )}
+              </Field>
+            </>
+          )}
 
           <FieldDescription className="text-center text-xs">
             By creating an account, you agree to our{" "}

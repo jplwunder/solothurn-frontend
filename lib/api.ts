@@ -36,6 +36,13 @@ export const api = {
       },
     }),
 
+  postPublic: <T>(path: string, body: unknown, options?: RequestInit) =>
+    request<T>(path, {
+      ...options,
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
   put: <T>(path: string, body: unknown, options?: RequestInit) =>
     request<T>(path, {
       ...options,
